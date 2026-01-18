@@ -229,3 +229,94 @@ export type WebviewMessage =
     | ImportRequest 
     | BlockRemovedMessage 
     | GoToSourceMessage;
+
+// ============ Data Flow Analysis Types ============
+
+/**
+ * Represents a node in the data flow graph (a variable at a specific location)
+ */
+export interface DataFlowNode {
+    /** The variable/identifier name */
+    varName: string;
+    /** What kind of variable this is */
+    kind: 'parameter' | 'local' | 'state' | 'return' | 'msg' | 'block' | 'tx';
+    /** Line number in the source file */
+    line: number;
+    /** Column number in the source file */
+    column: number;
+    /** Whether this is a definition (vs a use) */
+    isDefinition: boolean;
+    /** The type of the variable if known */
+    typeName?: string;
+    /** DeFi-specific tag for special values */
+    defiTag?: 'token-amount' | 'address-target' | 'msg-value' | 'msg-sender' | 'balance';
+}
+
+/**
+ * Represents an edge in the data flow graph (data flowing from one node to another)
+ */
+export interface DataFlowEdge {
+    /** Source node (where data comes from) */
+    from: DataFlowNode;
+    /** Target node (where data goes to) */
+    to: DataFlowNode;
+    /** Type of edge */
+    edgeType: 'assign' | 'use' | 'call-arg' | 'return' | 'state-write' | 'state-read' | 'external-call';
+    /** Description of any transformation applied (e.g., "* price / 1e18") */
+    transformation?: string;
+}
+
+/**
+ * Represents a sink - where data ultimately flows to (external calls, state writes, returns)
+ */
+export interface SinkInfo {
+    /** Type of sink */
+    kind: 'external-call' | 'state-write' | 'return' | 'event-emit';
+    /** Line number */
+    line: number;
+    /** Column number */
+    column: number;
+    /** Description of the sink (e.g., "token.transfer(to, amount)") */
+    description: string;
+    /** Variables that flow into this sink */
+    inputVars: string[];
+    /** The target of an external call (if applicable) */
+    callTarget?: string;
+}
+
+/**
+ * Complete data flow graph for a function
+ */
+export interface DataFlowGraph {
+    /** All nodes (variable definitions and uses) */
+    nodes: DataFlowNode[];
+    /** All edges (data flowing between nodes) */
+    edges: DataFlowEdge[];
+    /** All sinks (where data ultimately goes) */
+    sinks: SinkInfo[];
+    /** Map of variable name to all its definitions */
+    definitions: Map<string, DataFlowNode[]>;
+    /** Map of variable name to all its uses */
+    uses: Map<string, DataFlowNode[]>;
+}
+
+/**
+ * Serializable version of DataFlowGraph for passing to webview
+ */
+export interface DataFlowGraphData {
+    nodes: DataFlowNode[];
+    edges: DataFlowEdge[];
+    sinks: SinkInfo[];
+    /** definitions as array of [varName, nodes[]] */
+    definitions: [string, DataFlowNode[]][];
+    /** uses as array of [varName, nodes[]] */
+    uses: [string, DataFlowNode[]][];
+}
+
+/**
+ * Extended function analysis including data flow
+ */
+export interface FunctionAnalysisWithFlow extends FunctionAnalysis {
+    /** Data flow graph for the function */
+    dataFlow: DataFlowGraph;
+}

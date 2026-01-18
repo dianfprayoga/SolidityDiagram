@@ -437,6 +437,17 @@ export function generateCanvasStyles(): string {
         color: #58a6ff;
     }
 
+    .canvas-header .flow-indicator {
+        margin-top: 6px;
+        padding: 4px 8px;
+        font-size: 10px;
+        background: rgba(166, 227, 161, 0.15);
+        color: #a6e3a1;
+        border-radius: 4px;
+        display: inline-block;
+        cursor: help;
+    }
+
     /* ============ Code Block Wrapper ============ */
 
     .code-block-wrapper {
@@ -648,13 +659,39 @@ export function generateCanvasStyles(): string {
         overflow: visible;
     }
 
-    .arrow-line path {
-        transition: opacity 0.15s ease;
+    .arrow-line {
+        pointer-events: auto;
     }
 
-    .arrow-line:hover path {
+    .arrow-line .arrow-path {
+        transition: all 0.2s ease;
+    }
+
+    .arrow-line .arrow-hit-area {
+        pointer-events: stroke;
+    }
+
+    /* Arrow glitter animation */
+    @keyframes arrowGlitter {
+        0% {
+            filter: url(#glitter) drop-shadow(0 0 2px currentColor);
+            opacity: 0.9;
+        }
+        50% {
+            filter: url(#glitter) drop-shadow(0 0 6px currentColor);
+            opacity: 1;
+        }
+        100% {
+            filter: url(#glitter) drop-shadow(0 0 3px currentColor);
+            opacity: 0.95;
+        }
+    }
+
+    .arrow-line:hover .arrow-path {
+        filter: url(#glitter);
+        stroke-width: 2.5 !important;
         opacity: 1 !important;
-        stroke-width: 2 !important;
+        animation: arrowGlitter 0.6s ease-in-out infinite alternate;
     }
 
     /* ============ Resize Handles ============ */

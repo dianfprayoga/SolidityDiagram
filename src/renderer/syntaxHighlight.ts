@@ -49,6 +49,9 @@ export interface HighlightOptions {
     enableImport?: boolean;     // Whether to enable Cmd+Click import on tokens
     variableTypes?: Map<string, string>;  // Map of variable names to their type names
     stateVariables?: Set<string>;  // Set of state variable names that can be imported
+    enableDataFlow?: boolean;   // Whether to enable data flow visualization (adds data-var attributes)
+    dataFlowVars?: Set<string>; // Set of variable names involved in data flow (for highlighting)
+    defiTags?: Map<string, string>;  // Map of variable names to DeFi tags (token-amount, address-target, etc.)
 }
 
 export class SyntaxHighlighter {
@@ -208,8 +211,26 @@ export class SyntaxHighlighter {
         let i = 0;
         const enableImport = this.currentOptions.enableImport ?? false;
         const displayedBlocks = this.currentOptions.displayedBlocks ?? new Set<string>();
+        const enableDataFlow = this.currentOptions.enableDataFlow ?? false;
 
         while (i < line.length) {
+            // Check for special globals: msg.value, msg.sender, block.timestamp, etc.
+            if (enableDataFlow) {
+                const globalMatch = this.matchSpecialGlobal(line, i);
+                if (globalMatch) {
+                    const { fullMatch, defiTag } = globalMatch;
+                    let classes = 'token-variable flow-var';
+                    if (defiTag) {
+                        classes += ` defi-${defiTag}`;
+                    }
+                    result += `<span class="${classes}" data-var="${this.escapeHtml(fullMatch)}"` +
+                        (defiTag ? ` data-defi-tag="${defiTag}"` : '') +
+                        `>${this.escapeHtml(fullMatch)}</span>`;
+                    i += fullMatch.length;
+                    continue;
+                }
+            }
+
             // Check for single-line comment
             if (line.substring(i, i + 2) === '//') {
                 result += `<span class="token-comment">${this.escapeHtml(line.substring(i))}</span>`;
@@ -318,10 +339,35 @@ export class SyntaxHighlighter {
                         isStateVar && 
                         !displayedBlocks.has(`statevar-${word}`);
                     
+                    // Data flow attributes
+                    const enableDataFlow = this.currentOptions.enableDataFlow ?? false;
+                    const dataFlowVars = this.currentOptions.dataFlowVars ?? new Set<string>();
+                    const defiTags = this.currentOptions.defiTags ?? new Map<string, string>();
+                    const isDataFlowVar = dataFlowVars.has(word);
+                    const defiTag = defiTags.get(word);
+                    
+                    // Build data flow attributes string
+                    let dataFlowAttrs = '';
+                    if (enableDataFlow && isDataFlowVar) {
+                        dataFlowAttrs = ` data-var="${this.escapeHtml(word)}"`;
+                        if (defiTag) {
+                            dataFlowAttrs += ` data-defi-tag="${this.escapeHtml(defiTag)}"`;
+                        }
+                    }
+                    
+                    // Build the class list
+                    let varClasses = 'token-variable';
+                    if (enableDataFlow && isDataFlowVar) {
+                        varClasses += ' flow-var';
+                        if (defiTag) {
+                            varClasses += ` defi-${defiTag}`;
+                        }
+                    }
+                    
                     if (isStateVarImportable) {
-                        result += `<span class="token-variable importable-token" ` +
+                        result += `<span class="${varClasses} importable-token" ` +
                             `data-importable="statevar" data-name="${this.escapeHtml(word)}" ` +
-                            `data-line="${lineNumber}" data-block="${blockId}">` +
+                            `data-line="${lineNumber}" data-block="${blockId}"${dataFlowAttrs}>` +
                             `${this.escapeHtml(word)}</span>`;
                     } else {
                         // Check if this variable has a known struct/enum type
@@ -333,12 +379,12 @@ export class SyntaxHighlighter {
                             !this.isBuiltInType(varType);
                         
                         if (isImportableVar && varType) {
-                            result += `<span class="token-variable importable-token" ` +
+                            result += `<span class="${varClasses} importable-token" ` +
                                 `data-importable="type" data-name="${this.escapeHtml(varType)}" ` +
-                                `data-line="${lineNumber}" data-block="${blockId}">` +
+                                `data-line="${lineNumber}" data-block="${blockId}"${dataFlowAttrs}>` +
                                 `${this.escapeHtml(word)}</span>`;
                         } else {
-                            result += `<span class="token-variable">${this.escapeHtml(word)}</span>`;
+                            result += `<span class="${varClasses}"${dataFlowAttrs}>${this.escapeHtml(word)}</span>`;
                         }
                     }
                 }
@@ -361,6 +407,40 @@ export class SyntaxHighlighter {
         }
 
         return result;
+    }
+
+    /**
+     * Match special global expressions like msg.value, msg.sender, block.timestamp
+     */
+    private matchSpecialGlobal(line: string, index: number): { fullMatch: string; defiTag?: string } | null {
+        const globals = [
+            { pattern: 'msg.value', defiTag: 'msg-value' },
+            { pattern: 'msg.sender', defiTag: 'msg-sender' },
+            { pattern: 'msg.data', defiTag: undefined },
+            { pattern: 'msg.sig', defiTag: undefined },
+            { pattern: 'block.timestamp', defiTag: undefined },
+            { pattern: 'block.number', defiTag: undefined },
+            { pattern: 'block.basefee', defiTag: undefined },
+            { pattern: 'block.chainid', defiTag: undefined },
+            { pattern: 'block.coinbase', defiTag: undefined },
+            { pattern: 'block.difficulty', defiTag: undefined },
+            { pattern: 'block.gaslimit', defiTag: undefined },
+            { pattern: 'tx.origin', defiTag: undefined },
+            { pattern: 'tx.gasprice', defiTag: undefined },
+        ];
+
+        for (const { pattern, defiTag } of globals) {
+            if (line.substring(index, index + pattern.length) === pattern) {
+                // Make sure it's not part of a larger identifier
+                const charBefore = index > 0 ? line[index - 1] : ' ';
+                const charAfter = line[index + pattern.length] || ' ';
+                if (!/[a-zA-Z0-9_]/.test(charBefore) && !/[a-zA-Z0-9_]/.test(charAfter)) {
+                    return { fullMatch: pattern, defiTag };
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -507,6 +587,172 @@ export class SyntaxHighlighter {
 
             .theme-light .token-modifier {
                 color: #db2777;
+            }
+
+            /* Data Flow Visualization Styles */
+            .flow-var {
+                cursor: pointer;
+                border-radius: 2px;
+                transition: background-color 0.15s ease, box-shadow 0.15s ease;
+            }
+
+            .flow-var:hover {
+                background-color: rgba(88, 166, 255, 0.2);
+                box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3);
+            }
+
+            /* DeFi-specific variable highlighting */
+            .defi-token-amount {
+                border-bottom: 2px dotted #fab387;
+            }
+
+            .defi-token-amount:hover {
+                background-color: rgba(250, 179, 135, 0.2);
+                box-shadow: 0 0 0 2px rgba(250, 179, 135, 0.3);
+            }
+
+            .defi-msg-value {
+                border-bottom: 2px solid #f38ba8;
+                font-weight: 600;
+            }
+
+            .defi-msg-value:hover {
+                background-color: rgba(243, 139, 168, 0.2);
+                box-shadow: 0 0 0 2px rgba(243, 139, 168, 0.3);
+            }
+
+            .defi-msg-sender {
+                border-bottom: 2px solid #a6e3a1;
+            }
+
+            .defi-msg-sender:hover {
+                background-color: rgba(166, 227, 161, 0.2);
+                box-shadow: 0 0 0 2px rgba(166, 227, 161, 0.3);
+            }
+
+            .defi-address-target {
+                border-bottom: 2px dotted #89dceb;
+            }
+
+            .defi-address-target:hover {
+                background-color: rgba(137, 220, 235, 0.2);
+                box-shadow: 0 0 0 2px rgba(137, 220, 235, 0.3);
+            }
+
+            .defi-balance {
+                border-bottom: 2px dotted #cba6f7;
+            }
+
+            .defi-balance:hover {
+                background-color: rgba(203, 166, 247, 0.2);
+                box-shadow: 0 0 0 2px rgba(203, 166, 247, 0.3);
+            }
+
+            /* Highlighted variable states (when clicked/selected) */
+            .flow-var.flow-definition {
+                background-color: rgba(137, 180, 250, 0.3) !important;
+                box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.5) !important;
+            }
+
+            .flow-var.flow-use {
+                background-color: rgba(250, 179, 135, 0.3) !important;
+                box-shadow: 0 0 0 2px rgba(250, 179, 135, 0.5) !important;
+            }
+
+            .flow-var.flow-sink {
+                background-color: rgba(243, 139, 168, 0.3) !important;
+                box-shadow: 0 0 0 2px rgba(243, 139, 168, 0.5) !important;
+            }
+
+            /* Line highlighting for data flow */
+            .code-line.flow-highlight-def {
+                background-color: rgba(137, 180, 250, 0.15) !important;
+                border-left: 3px solid #89b4fa;
+            }
+
+            .code-line.flow-highlight-use {
+                background-color: rgba(250, 179, 135, 0.15) !important;
+                border-left: 3px solid #fab387;
+            }
+
+            .code-line.flow-highlight-sink {
+                background-color: rgba(243, 139, 168, 0.15) !important;
+                border-left: 3px solid #f38ba8;
+            }
+
+            /* Data flow tooltip */
+            .flow-tooltip {
+                position: fixed;
+                background-color: #1e1e2e;
+                border: 1px solid #45475a;
+                border-radius: 8px;
+                padding: 12px;
+                font-size: 12px;
+                color: #cdd6f4;
+                max-width: 320px;
+                min-width: 200px;
+                z-index: 10000;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+                pointer-events: none;
+                backdrop-filter: blur(8px);
+                border-left: 3px solid #89b4fa;
+            }
+
+            .flow-tooltip-header {
+                font-weight: 600;
+                color: #89b4fa;
+                margin-bottom: 8px;
+                font-size: 13px;
+            }
+
+            .flow-tooltip-section {
+                margin-bottom: 8px;
+            }
+
+            .flow-tooltip-section-title {
+                color: #a6adc8;
+                font-size: 11px;
+                text-transform: uppercase;
+                margin-bottom: 4px;
+            }
+
+            .flow-tooltip-item {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 2px 0;
+            }
+
+            .flow-tooltip-item .line-ref {
+                color: #6c7086;
+                font-family: monospace;
+            }
+
+            .flow-tooltip-item .flow-arrow {
+                color: #45475a;
+            }
+
+            .flow-tooltip-defi-tag {
+                display: inline-block;
+                font-size: 10px;
+                padding: 2px 6px;
+                border-radius: 4px;
+                margin-left: 6px;
+            }
+
+            .flow-tooltip-defi-tag.token-amount {
+                background-color: rgba(250, 179, 135, 0.2);
+                color: #fab387;
+            }
+
+            .flow-tooltip-defi-tag.msg-value {
+                background-color: rgba(243, 139, 168, 0.2);
+                color: #f38ba8;
+            }
+
+            .flow-tooltip-defi-tag.address-target {
+                background-color: rgba(137, 220, 235, 0.2);
+                color: #89dceb;
             }
         `;
     }

@@ -54,7 +54,43 @@ export function generateArrowManagerScript(): string {
             this.defs.appendChild(this.createMarker('arrow-enum', '#a6e3a1'));
             this.defs.appendChild(this.createMarker('arrow-statevar', '#fab387'));
 
+            // Glitter filter for hover effect
+            const glitterFilter = this.createGlitterFilter();
+            this.defs.appendChild(glitterFilter);
+
             this.svg.appendChild(this.defs);
+        }
+
+        createGlitterFilter() {
+            const filter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+            filter.setAttribute('id', 'glitter');
+            filter.setAttribute('x', '-50%');
+            filter.setAttribute('y', '-50%');
+            filter.setAttribute('width', '200%');
+            filter.setAttribute('height', '200%');
+
+            // Glow effect
+            const feGaussianBlur = document.createElementNS('http://www.w3.org/2000/svg', 'feGaussianBlur');
+            feGaussianBlur.setAttribute('in', 'SourceGraphic');
+            feGaussianBlur.setAttribute('stdDeviation', '3');
+            feGaussianBlur.setAttribute('result', 'blur');
+
+            const feMerge = document.createElementNS('http://www.w3.org/2000/svg', 'feMerge');
+            const feMergeNode1 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
+            feMergeNode1.setAttribute('in', 'blur');
+            const feMergeNode2 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
+            feMergeNode2.setAttribute('in', 'blur');
+            const feMergeNode3 = document.createElementNS('http://www.w3.org/2000/svg', 'feMergeNode');
+            feMergeNode3.setAttribute('in', 'SourceGraphic');
+
+            feMerge.appendChild(feMergeNode1);
+            feMerge.appendChild(feMergeNode2);
+            feMerge.appendChild(feMergeNode3);
+
+            filter.appendChild(feGaussianBlur);
+            filter.appendChild(feMerge);
+
+            return filter;
         }
 
         createMarker(id, color) {
@@ -236,13 +272,6 @@ export function generateArrowManagerScript(): string {
 
             const d = \`M \${x1} \${y1} C \${cp1x} \${y1}, \${cp2x} \${y2}, \${x2} \${y2}\`;
 
-            // Create path
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', d);
-            path.setAttribute('fill', 'none');
-            path.setAttribute('stroke-width', '1.5');
-            path.setAttribute('marker-end', \`url(#arrow-\${type})\`);
-            
             // Set color based on type
             const colors = {
                 'function': '#f38ba8',
@@ -250,10 +279,50 @@ export function generateArrowManagerScript(): string {
                 'enum': '#a6e3a1',
                 'statevar': '#fab387'
             };
-            path.setAttribute('stroke', colors[type] || '#888');
+            const color = colors[type] || '#888';
+
+            // Create invisible hit area for easier hover
+            const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            hitArea.setAttribute('d', d);
+            hitArea.setAttribute('fill', 'none');
+            hitArea.setAttribute('stroke', 'transparent');
+            hitArea.setAttribute('stroke-width', '12');
+            hitArea.setAttribute('class', 'arrow-hit-area');
+            hitArea.style.cursor = 'pointer';
+
+            // Create visible path
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', d);
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-width', '1.5');
+            path.setAttribute('marker-end', \`url(#arrow-\${type})\`);
+            path.setAttribute('stroke', color);
             path.setAttribute('opacity', '0.8');
+            path.setAttribute('class', 'arrow-path');
+            path.style.transition = 'all 0.2s ease';
+
+            // Add hover events for glitter effect
+            const applyGlitter = () => {
+                path.setAttribute('filter', 'url(#glitter)');
+                path.setAttribute('stroke-width', '2.5');
+                path.setAttribute('opacity', '1');
+                path.style.animation = 'arrowGlitter 0.6s ease-in-out infinite alternate';
+            };
+
+            const removeGlitter = () => {
+                path.removeAttribute('filter');
+                path.setAttribute('stroke-width', '1.5');
+                path.setAttribute('opacity', '0.8');
+                path.style.animation = 'none';
+            };
+
+            hitArea.addEventListener('mouseenter', applyGlitter);
+            hitArea.addEventListener('mouseleave', removeGlitter);
+            path.addEventListener('mouseenter', applyGlitter);
+            path.addEventListener('mouseleave', removeGlitter);
 
             group.appendChild(path);
+            group.appendChild(hitArea);
             return group;
         }
     }

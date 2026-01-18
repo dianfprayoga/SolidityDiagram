@@ -20,7 +20,8 @@ src/
 │   ├── functionAnalyzer.ts   # Main analysis orchestrator
 │   ├── typeResolver.ts       # Resolves struct/enum definitions
 │   ├── callGraphBuilder.ts   # Builds function call graph
-│   └── stateVariableResolver.ts  # Resolves state variable declarations
+│   ├── stateVariableResolver.ts  # Resolves state variable declarations
+│   └── dataFlowAnalyzer.ts   # Data flow tracking for DeFi code review
 ├── renderer/
 │   ├── webviewProvider.ts    # VS Code webview panel management
 │   ├── diagramGenerator.ts   # Generates HTML diagram
@@ -28,7 +29,9 @@ src/
 │   ├── draggableBlocks.ts    # Drag functionality for code blocks
 │   ├── arrowManager.ts       # Dynamic arrow connections
 │   ├── syntaxHighlight.ts    # Solidity syntax highlighting
-│   └── importManager.ts      # Dynamic Cmd+Click import functionality
+│   ├── importManager.ts      # Dynamic Cmd+Click import functionality
+│   ├── dataFlowVisualizer.ts # Data flow hover/click visualization
+│   └── notesManager.ts       # Text annotations/notes on the canvas
 ├── types/index.ts            # TypeScript type definitions
 └── utils/sourceMapper.ts     # Source code mapping utilities
 ```
@@ -80,6 +83,78 @@ Tokens in the code are highlighted as importable (dotted underline on hover):
 - **Variables**: Click to import the type definition of typed variables
 - **State Variables**: Click to import state variable declarations
 
+## Data Flow Tracking (DeFi Code Review)
+On-demand visualization of how data flows through functions. Designed for DeFi protocol auditing.
+
+### Usage
+- **Hover** on any variable to see where it's defined and used
+- **Click** on a variable to lock the visualization for detailed inspection
+- Press **ESC** or click elsewhere to dismiss
+
+### What Gets Tracked
+- **Definitions**: Function parameters, local variable declarations
+- **Uses**: Where variables are read/referenced
+- **Sinks**: External calls, state writes, return statements, event emissions
+- **Flow edges**: How data moves from definitions to uses to sinks
+
+### DeFi-Specific Patterns
+Variables are tagged with visual indicators based on their semantic meaning:
+- **Token Amounts** (orange dotted): `amount`, `value`, `shares`, `balance`, `fee`, `reward`, etc.
+- **msg.value** (pink solid): Native ETH value
+- **msg.sender** (green solid): Transaction caller
+- **Address Targets** (cyan dotted): `to`, `recipient`, `pool`, `vault`, `router`, etc.
+- **Balance Checks** (purple dotted): Variables involved in balance comparisons
+
+### Tooltip Information
+When hovering/clicking a variable, the tooltip shows:
+1. Variable name and DeFi tag (if applicable)
+2. Where it's defined (line numbers, parameter/local/state)
+3. Where it's used (line numbers)
+4. What sinks it flows to (external calls, state writes, returns)
+5. DeFi risk hints (e.g., "Flows to external call - verify validation")
+
+### Key Files
+- `dataFlowAnalyzer.ts` - Core analysis: extracts definitions, uses, edges, sinks
+- `dataFlowVisualizer.ts` - Client-side hover/click handlers and tooltip rendering
+- `syntaxHighlight.ts` - Adds `data-var` and `data-defi-tag` attributes to tokens
+
+## Annotations Feature
+Add text annotations directly on the diagram canvas for code review.
+
+### Notes (Sticky Notes)
+- **Double-click** on empty canvas area to create a note
+- **Ctrl/Cmd + N** to create a note at center of viewport
+- Click the **"+ Note"** button in the controls
+- **Drag** notes by their header
+- **Resize** notes by dragging the textarea
+- **Delete** notes with the × button
+- **Color** notes using the color buttons (yellow, green, blue, pink)
+- **Arrow to code**: Click ↗ button, then click a code line to connect
+
+### Labels (Compact Text Annotations)
+- **Ctrl/Cmd + L** to create a label at center of viewport
+- Click the **"+ Label"** button in the controls
+- Labels are compact one-line annotations
+- **Drag** labels by the ⋮⋮ handle or body
+- **Arrow to code**: Click ↗ button, then click a code line to connect
+- **Background colors**: Blue, Red, Green, Orange
+- **Text size**: A- / A+ buttons to adjust font size (8px - 32px)
+- **Text color**: T buttons for White, Black, or Yellow text
+
+### Annotation Arrows
+- Arrows from notes/labels to code lines are **responsive to zoom/pan**
+- Arrows automatically update position when canvas is transformed
+- Dashed lines with colored arrowheads matching the annotation color
+
+Both notes and labels can have arrows pointing to specific code lines.
+Annotations are saved to localStorage and persist across sessions.
+
+## Arrow Hover Effect
+Arrows connecting code blocks have a **glitter/glow effect** on hover:
+- Hover over any arrow to see it glow and pulse
+- Makes it easier to trace connections between code blocks
+- Color-coded by type (function=pink, struct=cyan, enum=green, statevar=orange)
+
 ## Code Style
 - TypeScript with strict mode
 - Inline JavaScript/CSS generation for webview (no external files in webview)
@@ -90,9 +165,13 @@ Tokens in the code are highlighted as importable (dotted underline on hover):
 - `canvasController.ts` - Canvas behavior, CSS styles
 - `diagramGenerator.ts` - HTML structure, block layout
 - `arrowManager.ts` - Arrow routing and positioning
-- `syntaxHighlight.ts` - Code syntax colors
+- `syntaxHighlight.ts` - Code syntax colors, data flow token attributes
 - `importManager.ts` - Dynamic import logic (client-side)
 - `stateVariableResolver.ts` - State variable resolution
+- `dataFlowAnalyzer.ts` - Data flow analysis, DeFi pattern detection
+- `dataFlowVisualizer.ts` - Data flow tooltip and highlighting
+- `notesManager.ts` - Text notes/annotations feature
+- `arrowManager.ts` - Arrow connections and glitter hover effect
 
 ## Color Palette
 - Background: `#0d1117`
@@ -105,3 +184,19 @@ Tokens in the code are highlighted as importable (dotted underline on hover):
 - Enum arrows: `#a6e3a1` (green)
 - State variable arrows: `#fab387` (orange/peach)
 - Keywords: `#cba6f7` (purple)
+
+### Data Flow Colors
+- Definition highlight: `#89b4fa` (blue)
+- Use highlight: `#fab387` (orange)
+- Sink highlight: `#f38ba8` (pink)
+- Token amount tag: `#fab387` (orange)
+- msg.value tag: `#f38ba8` (pink)
+- msg.sender tag: `#a6e3a1` (green)
+- Address target tag: `#89dceb` (cyan)
+- Balance tag: `#cba6f7` (purple)
+
+### Note Colors
+- Yellow: `#fef3c7` → `#fde68a` gradient
+- Green: `#d1fae5` → `#a7f3d0` gradient
+- Blue: `#dbeafe` → `#bfdbfe` gradient
+- Pink: `#fce7f3` → `#fbcfe8` gradient

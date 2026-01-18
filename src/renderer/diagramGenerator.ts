@@ -1,17 +1,22 @@
 import {
     FunctionAnalysis,
+    FunctionAnalysisWithFlow,
     FunctionInfo,
     FunctionCallInfo,
     TypeReference,
     StructInfo,
     EnumInfo,
-    CodeBlockData
+    CodeBlockData,
+    DataFlowGraph,
+    DataFlowGraphData
 } from '../types';
 import { SyntaxHighlighter } from './syntaxHighlight';
 import { generateCanvasControllerScript, generateCanvasStyles } from './canvasController';
 import { generateDraggableBlocksScript } from './draggableBlocks';
 import { generateArrowManagerScript, ArrowDefinition } from './arrowManager';
 import { generateImportManagerScript } from './importManager';
+import { generateDataFlowVisualizerScript } from './dataFlowVisualizer';
+import { generateNotesManagerScript, generateNotesStyles } from './notesManager';
 
 interface CodeBlock {
     id: string;
@@ -28,11 +33,17 @@ export class DiagramGenerator {
     private highlighter: SyntaxHighlighter;
     private displayedBlocks: Set<string>;
     private stateVariableNames: Set<string>;
+    private dataFlowGraph: DataFlowGraph | null;
+    private dataFlowVars: Set<string>;
+    private defiTags: Map<string, string>;
 
     constructor() {
         this.highlighter = new SyntaxHighlighter();
         this.displayedBlocks = new Set();
         this.stateVariableNames = new Set();
+        this.dataFlowGraph = null;
+        this.dataFlowVars = new Set();
+        this.defiTags = new Map();
     }
 
     /**
@@ -45,15 +56,50 @@ export class DiagramGenerator {
 
     /**
      * Generate the complete HTML diagram with Miro-style canvas
+     * Accepts either FunctionAnalysis or FunctionAnalysisWithFlow
      */
-    generate(analysis: FunctionAnalysis): string {
+    generate(analysis: FunctionAnalysis | FunctionAnalysisWithFlow): string {
         const blocks = this.createCodeBlocks(analysis);
         const arrows = this.createArrows(analysis, blocks);
         
         // Track displayed blocks for import detection
         this.displayedBlocks = new Set(blocks.map(b => b.id));
 
+        // Extract data flow information if available
+        if ('dataFlow' in analysis && analysis.dataFlow) {
+            this.dataFlowGraph = analysis.dataFlow;
+            this.extractDataFlowInfo(analysis.dataFlow);
+        }
+
         return this.renderHtml(blocks, arrows, analysis);
+    }
+
+    /**
+     * Extract variable names and DeFi tags from the data flow graph
+     */
+    private extractDataFlowInfo(graph: DataFlowGraph): void {
+        this.dataFlowVars = new Set();
+        this.defiTags = new Map();
+
+        for (const node of graph.nodes) {
+            this.dataFlowVars.add(node.varName);
+            if (node.defiTag) {
+                this.defiTags.set(node.varName, node.defiTag);
+            }
+        }
+    }
+
+    /**
+     * Serialize the data flow graph for JSON (convert Maps to arrays)
+     */
+    private serializeDataFlowGraph(graph: DataFlowGraph): DataFlowGraphData {
+        return {
+            nodes: graph.nodes,
+            edges: graph.edges,
+            sinks: graph.sinks,
+            definitions: Array.from(graph.definitions.entries()),
+            uses: Array.from(graph.uses.entries())
+        };
     }
 
     /**
@@ -273,7 +319,12 @@ export class DiagramGenerator {
     /**
      * Render the complete HTML page with Miro-style canvas
      */
-    private renderHtml(blocks: CodeBlock[], arrows: ArrowDefinition[], analysis: FunctionAnalysis): string {
+    private renderHtml(blocks: CodeBlock[], arrows: ArrowDefinition[], analysis: FunctionAnalysis | FunctionAnalysisWithFlow): string {
+        // Prepare data flow graph data for injection
+        const dataFlowData = this.dataFlowGraph 
+            ? JSON.stringify(this.serializeDataFlowGraph(this.dataFlowGraph))
+            : 'null';
+
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -283,6 +334,7 @@ export class DiagramGenerator {
     <style>
         ${generateCanvasStyles()}
         ${this.highlighter.getStyles()}
+        ${generateNotesStyles()}
     </style>
 </head>
 <body>
@@ -290,6 +342,7 @@ export class DiagramGenerator {
     <div class="canvas-header">
         <h1>Function Diagram</h1>
         <div class="function-name">${this.escapeHtml(analysis.function.name)}</div>
+        ${this.dataFlowGraph ? '<div class="flow-indicator" title="Hover/click on variables to see data flow">Data Flow Enabled</div>' : ''}
     </div>
 
     <!-- Canvas Controls -->
@@ -297,6 +350,8 @@ export class DiagramGenerator {
         <button onclick="canvasController && canvasController.resetView()">Reset View</button>
         <button onclick="canvasController && canvasController.fitToView()">Fit to View</button>
         <button onclick="draggableManager && draggableManager.relayout()">Re-layout</button>
+        <button onclick="notesManager && notesManager.createNoteAtCenter()" title="Add Note (Ctrl+N)">+ Note</button>
+        <button onclick="notesManager && notesManager.createLabelAtCenter()" title="Add Label (Ctrl+L)">+ Label</button>
         <span id="zoom-indicator">100%</span>
     </div>
 
@@ -326,13 +381,22 @@ export class DiagramGenerator {
         ${generateDraggableBlocksScript()}
         ${generateArrowManagerScript()}
         ${generateImportManagerScript()}
+        ${generateDataFlowVisualizerScript()}
+        ${generateNotesManagerScript()}
 
-        // Initialize arrows after everything is loaded
+        // Initialize arrows and data flow after everything is loaded
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
+                // Initialize arrows
                 const arrows = ${JSON.stringify(arrows)};
                 if (typeof setArrowsFromAnalysis === 'function') {
                     setArrowsFromAnalysis(arrows);
+                }
+
+                // Initialize data flow visualization
+                const dataFlowGraph = ${dataFlowData};
+                if (dataFlowGraph && typeof initDataFlow === 'function') {
+                    initDataFlow(dataFlowGraph);
                 }
             }, 200);
         });
@@ -351,7 +415,10 @@ export class DiagramGenerator {
             startLineNumber: block.startLine,
             displayedBlocks: this.displayedBlocks,
             enableImport: true,  // Enable Cmd+Click import on tokens
-            stateVariables: this.stateVariableNames  // Pass state variable names for import
+            stateVariables: this.stateVariableNames,  // Pass state variable names for import
+            enableDataFlow: this.dataFlowGraph !== null,  // Enable data flow visualization
+            dataFlowVars: this.dataFlowVars,  // Variables involved in data flow
+            defiTags: this.defiTags  // DeFi-specific tags for variables
         });
         
         const categoryClass = `block-${block.category}`;

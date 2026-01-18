@@ -4,27 +4,32 @@ import { ASTTraverser } from '../parser/astTraverser';
 import {
     FunctionInfo,
     FunctionAnalysis,
+    FunctionAnalysisWithFlow,
     FunctionCallInfo,
     TypeReference,
     StructInfo,
     EnumInfo,
     ParsedFile,
-    SourceLocation
+    SourceLocation,
+    DataFlowGraph
 } from '../types';
 import { TypeResolver } from './typeResolver';
 import { CallGraphBuilder } from './callGraphBuilder';
+import { DataFlowAnalyzer } from './dataFlowAnalyzer';
 
 export class FunctionAnalyzer {
     private parser: SolidityParser;
     private traverser: ASTTraverser;
     private typeResolver: TypeResolver;
     private callGraphBuilder: CallGraphBuilder;
+    private dataFlowAnalyzer: DataFlowAnalyzer;
 
     constructor(parser: SolidityParser) {
         this.parser = parser;
         this.traverser = new ASTTraverser();
         this.typeResolver = new TypeResolver(parser);
         this.callGraphBuilder = new CallGraphBuilder(parser);
+        this.dataFlowAnalyzer = new DataFlowAnalyzer();
     }
 
     /**
@@ -34,7 +39,7 @@ export class FunctionAnalyzer {
         sourceCode: string,
         filePath: string,
         position: vscode.Position
-    ): Promise<FunctionAnalysis | null> {
+    ): Promise<FunctionAnalysisWithFlow | null> {
         // Parse the source file
         const parsedFile = this.parser.parse(sourceCode, filePath);
         
@@ -61,11 +66,51 @@ export class FunctionAnalyzer {
             workspaceFiles
         );
 
+        // Get state variables for the current contract
+        const stateVariables = this.getStateVariablesForFunction(functionInfo, parsedFile);
+
+        // Analyze data flow
+        const dataFlow = this.dataFlowAnalyzer.analyze(functionInfo, stateVariables);
+
         return {
             function: functionInfo,
             referencedTypes,
-            innerCalls
+            innerCalls,
+            dataFlow
         };
+    }
+
+    /**
+     * Get state variable names for the contract containing the function
+     */
+    private getStateVariablesForFunction(
+        functionInfo: FunctionInfo,
+        parsedFile: ParsedFile
+    ): Set<string> {
+        const stateVars = new Set<string>();
+
+        // Find the contract that contains this function
+        for (const contract of parsedFile.contracts) {
+            for (const func of contract.functions) {
+                if (func.name === functionInfo.name && 
+                    func.location.start.line === functionInfo.location.start.line) {
+                    // Found the contract, collect its state variables
+                    for (const stateVar of contract.stateVariables) {
+                        stateVars.add(stateVar.name);
+                    }
+                    break;
+                }
+            }
+        }
+
+        return stateVars;
+    }
+
+    /**
+     * Get the data flow analyzer for external use
+     */
+    getDataFlowAnalyzer(): DataFlowAnalyzer {
+        return this.dataFlowAnalyzer;
     }
 
     /**
