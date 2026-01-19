@@ -130,6 +130,13 @@ export function generateImportManagerScript(): string {
             const body = this.pickerElement.querySelector('.picker-body');
             body.innerHTML = '';
             
+            // Clear loading state on tokens since picker is now showing
+            for (const [key, value] of this.pendingImports.entries()) {
+                if (key.startsWith('impl-')) {
+                    value.token.classList.remove('loading');
+                }
+            }
+            
             // Store context for selection
             this.pickerContext = {
                 sourceBlockId: message.sourceBlockId,
@@ -167,6 +174,15 @@ export function generateImportManagerScript(): string {
 
         hideImplementationPicker() {
             this.pickerElement.classList.remove('visible');
+            
+            // Clear any pending interface call imports and remove loading state
+            for (const [key, value] of this.pendingImports.entries()) {
+                if (key.startsWith('impl-')) {
+                    value.token.classList.remove('loading');
+                    this.pendingImports.delete(key);
+                }
+            }
+            
             this.pickerContext = null;
         }
 
@@ -184,8 +200,18 @@ export function generateImportManagerScript(): string {
 
         handleImplementationsResult(message) {
             if (!message.success) {
-                // Show error briefly
+                // Show error briefly and clear loading state
                 console.warn('Implementation search failed:', message.error);
+                
+                // Clear any pending interface call imports
+                for (const [key, value] of this.pendingImports.entries()) {
+                    if (key.startsWith('impl-')) {
+                        value.token.classList.remove('loading');
+                        value.token.classList.add('error');
+                        setTimeout(() => value.token.classList.remove('error'), 1000);
+                        this.pendingImports.delete(key);
+                    }
+                }
             }
         }
 
