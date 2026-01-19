@@ -21,7 +21,8 @@ src/
 │   ├── typeResolver.ts       # Resolves struct/enum definitions
 │   ├── callGraphBuilder.ts   # Builds function call graph
 │   ├── stateVariableResolver.ts  # Resolves state variable declarations
-│   └── dataFlowAnalyzer.ts   # Data flow tracking for DeFi code review
+│   ├── dataFlowAnalyzer.ts   # Data flow tracking for DeFi code review
+│   └── inheritanceResolver.ts # Interface/inheritance resolution & library method tracking
 ├── renderer/
 │   ├── webviewProvider.ts    # VS Code webview panel management
 │   ├── diagramGenerator.ts   # Generates HTML diagram
@@ -70,11 +71,43 @@ src/
 - **State Variables**: Contract state variables referenced in the function (importable via Cmd+Click)
 - **Internal Calls**: Only functions with actual definitions in the workspace
 
-## What Gets Excluded
-- Interface calls: `IERC20(token_).safeApprove(...)`, `IRewardPool(addr).method()`
+## Interface & Library Resolution
+The extension now resolves interface calls to actual implementations:
+
+### Interface Calls
+- **Pattern Detection**: Recognizes `IContractName(address).methodName()` patterns with nested parentheses
+- **Multiple Implementations**: Shows picker dialog when multiple implementations exist
+- **Workspace Search**: Searches all `.sol` files for contracts implementing the interface
+- **Inheritance Tracking**: Follows `is InterfaceName` declarations to find implementations
+
+### Library Extension Methods
+- **Using Directives**: Parses `using LibraryName for Type` statements (global and contract-level)
+- **Method Resolution**: Resolves calls like `token.safeApprove()` to `SafeERC20.safeApprove()`
+- **Context-Aware**: Uses calling contract's scope to find correct library attachments
+- **Workspace + Dependencies**: Searches both workspace and `node_modules`
+
+### External Dependencies
+The extension scans `node_modules` for common Solidity libraries:
+- **OpenZeppelin Contracts**: `@openzeppelin/contracts/**/*.sol`
+- **Solmate**: `solmate/src/**/*.sol`
+- **Solady**: `solady/src/**/*.sol`
+- **Forge-std**: `forge-std/src/**/*.sol`
+
+### Implementation Picker
+When multiple implementations exist for an interface call:
+1. User Cmd+Clicks on the method name
+2. Modal dialog shows all implementations with:
+   - Contract name and file path
+   - Contract kind badge (contract, abstract, library)
+   - Location in workspace or dependencies
+3. User selects desired implementation
+4. Code block is imported and displayed
+
+## What Gets Excluded (After Resolution Attempts)
+- Interface calls without found implementations (shows signature only)
 - Type casts: `address(0)`, `uint256(value)`
 - Built-in calls: `require()`, `keccak256()`, `abi.encode()`
-- External library methods: `safeTransfer`, `safeApprove`, etc.
+- External library static calls without definitions
 
 ## Dynamic Import Feature
 Tokens in the code are highlighted as importable (dotted underline on hover):
@@ -82,6 +115,13 @@ Tokens in the code are highlighted as importable (dotted underline on hover):
 - **Types**: Click to import struct/enum definitions
 - **Variables**: Click to import the type definition of typed variables
 - **State Variables**: Click to import state variable declarations
+- **Interface Calls**: Click on method names in patterns like `IERC20(token).approve()` to import implementations
+
+### Interaction Priority
+The extension properly handles conflicting interactions:
+- **Cmd+Click / Ctrl+Click**: Always triggers import functionality (takes precedence)
+- **Regular Click**: Triggers data flow highlighting (if enabled)
+- This allows both features to coexist without conflicts
 
 ## Data Flow Tracking (DeFi Code Review)
 On-demand visualization of how data flows through functions. Designed for DeFi protocol auditing.
@@ -162,16 +202,18 @@ Arrows connecting code blocks have a **glitter/glow effect** on hover:
 - No external UI frameworks - pure DOM manipulation
 
 ## Key Files to Modify
-- `canvasController.ts` - Canvas behavior, CSS styles
+- `canvasController.ts` - Canvas behavior, CSS styles, implementation picker UI
 - `diagramGenerator.ts` - HTML structure, block layout
-- `arrowManager.ts` - Arrow routing and positioning
-- `syntaxHighlight.ts` - Code syntax colors, data flow token attributes
-- `importManager.ts` - Dynamic import logic (client-side)
+- `arrowManager.ts` - Arrow routing and positioning, glitter hover effect
+- `syntaxHighlight.ts` - Code syntax colors, data flow token attributes, interface call detection
+- `importManager.ts` - Dynamic import logic (client-side), interface call parsing, implementation picker
 - `stateVariableResolver.ts` - State variable resolution
 - `dataFlowAnalyzer.ts` - Data flow analysis, DeFi pattern detection
-- `dataFlowVisualizer.ts` - Data flow tooltip and highlighting
-- `notesManager.ts` - Text notes/annotations feature
-- `arrowManager.ts` - Arrow connections and glitter hover effect
+- `dataFlowVisualizer.ts` - Data flow tooltip and highlighting, interaction priority handling
+- `notesManager.ts` - Text notes/annotations feature, responsive arrows
+- `inheritanceResolver.ts` - Interface-to-implementation mapping, library method resolution, inheritance chains
+- `webviewProvider.ts` - Webview communication, dependency scanning, implementation selection
+- `solidityParser.ts` - AST parsing, `using` directive extraction, base contract tracking
 
 ## Color Palette
 - Background: `#0d1117`
@@ -200,3 +242,44 @@ Arrows connecting code blocks have a **glitter/glow effect** on hover:
 - Green: `#d1fae5` → `#a7f3d0` gradient
 - Blue: `#dbeafe` → `#bfdbfe` gradient
 - Pink: `#fce7f3` → `#fbcfe8` gradient
+
+## Technical Implementation Details
+
+### Interface Call Parsing
+The extension uses a character-by-character parser (not regex) to handle complex nested patterns:
+- **Nested Parentheses**: `IERC20(address(token_)).approve(...)` 
+- **String Literals**: Ignores parentheses inside strings
+- **Multiple Nesting**: Handles arbitrary nesting depth
+- **Type Casting Chains**: `IVault(address(pool)).getAsset()`
+
+Algorithm:
+1. Scan for capital-I prefix (interface naming convention)
+2. Find matching parenthesis using stack-based approach
+3. Extract interface name and method call
+4. Ignore if method is a type cast or builtin
+
+### Inheritance Resolution Algorithm
+```
+findAllImplementations(interfaceName, methodName, contextContract):
+  1. Search libraries attached to interfaceName via 'using' in context
+  2. Search contracts that directly inherit interfaceName
+  3. Fallback: search all contracts that have methodName
+  4. Return all found implementations
+```
+
+### Library Method Resolution
+```
+findLibraryMethods(typeName, methodName, contextContract):
+  1. Get libraries attached to typeName in contextContract scope
+  2. For each library, check if it defines methodName
+  3. Return library functions that match
+```
+
+### Dependency Scanning
+The extension scans `node_modules` with specific glob patterns:
+- `**/node_modules/@openzeppelin/contracts/**/*.sol`
+- `**/node_modules/solmate/src/**/*.sol`
+- `**/node_modules/solady/src/**/*.sol`
+- `**/node_modules/forge-std/src/**/*.sol`
+
+This is done once per diagram generation and cached.
