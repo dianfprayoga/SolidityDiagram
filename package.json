@@ -4,6 +4,10 @@
   "description": "Generate interactive diagrams showing function dependencies, data structures, and inner function calls for Solidity code",
   "version": "0.0.1",
   "publisher": "solidity-diagram",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/0xrudra99/SolidityDiagram.git"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
