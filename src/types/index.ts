@@ -105,6 +105,7 @@ export interface ContractInfo {
     name: string;
     kind: 'contract' | 'interface' | 'library' | 'abstract';
     baseContracts: string[];  // Names of inherited contracts/interfaces (is X, Y, Z)
+    usingDirectives: UsingDirective[];  // 'using X for Y' statements
     functions: FunctionInfo[];
     structs: StructInfo[];
     enums: EnumInfo[];
@@ -157,6 +158,18 @@ export interface ImportInfo {
     path: string;
     absolutePath: string | null;
     symbols: string[];
+}
+
+/**
+ * Represents a 'using LibraryName for Type' directive
+ */
+export interface UsingDirective {
+    /** The library name (e.g., "SafeERC20") */
+    libraryName: string;
+    /** The type the library is attached to (e.g., "IERC20", or "*" for all types) */
+    forType: string;
+    /** Whether this is a global using directive (using ... for ... global) */
+    isGlobal: boolean;
 }
 
 /**

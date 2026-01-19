@@ -402,16 +402,13 @@ export class SolidityDiagramProvider {
         this.workspaceFilesCache = await this.getWorkspaceFiles();
         this.inheritanceResolver.buildInheritanceGraph(this.workspaceFilesCache);
 
-        // Find implementations
-        let implementations = this.inheritanceResolver.findImplementations(
+        // Find implementations (including library extension methods)
+        // Pass the current contract name for context-aware 'using X for Y' lookup
+        const implementations = this.inheritanceResolver.findAllImplementations(
             message.interfaceName,
-            message.methodName
+            message.methodName,
+            this.currentContractName || undefined
         );
-
-        // If no implementations found via interface, try direct search
-        if (implementations.length === 0) {
-            implementations = this.inheritanceResolver.findContractsWithMethod(message.methodName);
-        }
 
         if (implementations.length === 0) {
             this.currentPanel.webview.postMessage({
@@ -529,6 +526,7 @@ export class SolidityDiagramProvider {
     private async getWorkspaceFiles(): Promise<Map<string, ParsedFile>> {
         const files = new Map<string, ParsedFile>();
         
+        // First, get all .sol files in the workspace (excluding node_modules)
         const solFiles = await vscode.workspace.findFiles('**/*.sol', '**/node_modules/**');
         
         for (const uri of solFiles) {
@@ -539,6 +537,58 @@ export class SolidityDiagramProvider {
                 files.set(uri.fsPath, parsed);
             } catch (error) {
                 console.warn(`Failed to parse ${uri.fsPath}:`, error);
+            }
+        }
+        
+        // Also scan common dependencies in node_modules
+        const dependencyFiles = await this.getDependencyFiles();
+        for (const [path, parsed] of dependencyFiles) {
+            files.set(path, parsed);
+        }
+        
+        return files;
+    }
+
+    /**
+     * Scan common Solidity dependencies in node_modules
+     * This includes OpenZeppelin, Solady, Solmate, and other popular libraries
+     */
+    private async getDependencyFiles(): Promise<Map<string, ParsedFile>> {
+        const files = new Map<string, ParsedFile>();
+        
+        // Common dependency paths to scan for library implementations
+        const dependencyPatterns = [
+            // OpenZeppelin contracts
+            'node_modules/@openzeppelin/contracts/token/**/*.sol',
+            'node_modules/@openzeppelin/contracts/utils/**/*.sol',
+            'node_modules/@openzeppelin/contracts/access/**/*.sol',
+            // OpenZeppelin upgradeable
+            'node_modules/@openzeppelin/contracts-upgradeable/token/**/*.sol',
+            'node_modules/@openzeppelin/contracts-upgradeable/utils/**/*.sol',
+            // Solmate
+            'node_modules/solmate/src/**/*.sol',
+            // Solady
+            'node_modules/solady/src/**/*.sol',
+            // Forge-std (for testing)
+            'node_modules/forge-std/src/**/*.sol',
+        ];
+        
+        for (const pattern of dependencyPatterns) {
+            try {
+                const depFiles = await vscode.workspace.findFiles(pattern);
+                
+                for (const uri of depFiles) {
+                    try {
+                        const document = await vscode.workspace.openTextDocument(uri);
+                        const sourceCode = document.getText();
+                        const parsed = this.parser.parse(sourceCode, uri.fsPath);
+                        files.set(uri.fsPath, parsed);
+                    } catch (error) {
+                        // Silently skip files that fail to parse
+                    }
+                }
+            } catch (error) {
+                // Pattern not found, skip
             }
         }
         

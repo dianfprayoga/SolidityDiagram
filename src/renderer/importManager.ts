@@ -763,38 +763,119 @@ export function generateImportManagerScript(): string {
         /**
          * Detect interface call patterns in a line: InterfaceName(address).method(...)
          * Returns array of { interfaceName, methodName, methodPos }
+         * Handles nested parentheses like IERC20(address(token)).method()
          */
         detectInterfaceCalls(line) {
             const results = [];
             
-            // Pattern: InterfaceName(anything).methodName(
-            // Captures: InterfaceName, methodName, and position of methodName
-            const pattern = /\\b([A-Z][a-zA-Z0-9_]*)\\s*\\([^)]*\\)\\s*\\.\\s*([a-z][a-zA-Z0-9_]*)\\s*\\(/g;
-            
-            let match;
-            while ((match = pattern.exec(line)) !== null) {
-                const interfaceName = match[1];
-                const methodName = match[2];
-                
-                // Calculate position of method name in the original line
-                // Find where methodName starts after the "."
-                const fullMatch = match[0];
-                const dotIndex = fullMatch.lastIndexOf('.');
-                const afterDot = fullMatch.substring(dotIndex + 1);
-                const methodStartInMatch = afterDot.indexOf(methodName);
-                const methodPos = match.index + dotIndex + 1 + methodStartInMatch;
-                
-                // Only count if it looks like an interface (starts with I or known interface patterns)
-                if (this.looksLikeInterface(interfaceName)) {
-                    results.push({
-                        interfaceName,
-                        methodName,
-                        methodPos
-                    });
+            // Use a character-by-character approach to handle nested parentheses
+            let i = 0;
+            while (i < line.length) {
+                // Look for a potential type name (starts with uppercase)
+                if (/[A-Z]/.test(line[i])) {
+                    const typeStart = i;
+                    
+                    // Read the type name
+                    while (i < line.length && /[a-zA-Z0-9_]/.test(line[i])) {
+                        i++;
+                    }
+                    const typeName = line.substring(typeStart, i);
+                    
+                    // Skip whitespace
+                    while (i < line.length && /\\s/.test(line[i])) {
+                        i++;
+                    }
+                    
+                    // Check for opening parenthesis
+                    if (i < line.length && line[i] === '(') {
+                        // Find matching closing parenthesis (handle nesting)
+                        const closeParenPos = this.findMatchingParen(line, i);
+                        if (closeParenPos === -1) {
+                            i++;
+                            continue;
+                        }
+                        
+                        i = closeParenPos + 1;
+                        
+                        // Skip whitespace
+                        while (i < line.length && /\\s/.test(line[i])) {
+                            i++;
+                        }
+                        
+                        // Check for dot
+                        if (i < line.length && line[i] === '.') {
+                            i++; // skip the dot
+                            
+                            // Skip whitespace
+                            while (i < line.length && /\\s/.test(line[i])) {
+                                i++;
+                            }
+                            
+                            // Read method name (must start with lowercase or underscore)
+                            if (i < line.length && /[a-z_]/.test(line[i])) {
+                                const methodStart = i;
+                                while (i < line.length && /[a-zA-Z0-9_]/.test(line[i])) {
+                                    i++;
+                                }
+                                const methodName = line.substring(methodStart, i);
+                                
+                                // Skip whitespace
+                                while (i < line.length && /\\s/.test(line[i])) {
+                                    i++;
+                                }
+                                
+                                // Check for opening paren (confirming it's a function call)
+                                if (i < line.length && line[i] === '(') {
+                                    // This is an interface call pattern!
+                                    if (this.looksLikeInterface(typeName)) {
+                                        results.push({
+                                            interfaceName: typeName,
+                                            methodName: methodName,
+                                            methodPos: methodStart
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Not followed by (, continue scanning
+                        continue;
+                    }
+                } else {
+                    i++;
                 }
             }
             
             return results;
+        }
+
+        /**
+         * Find the position of the matching closing parenthesis, handling nesting
+         */
+        findMatchingParen(line, openPos) {
+            if (line[openPos] !== '(') return -1;
+            
+            let depth = 1;
+            let i = openPos + 1;
+            
+            while (i < line.length && depth > 0) {
+                if (line[i] === '(') {
+                    depth++;
+                } else if (line[i] === ')') {
+                    depth--;
+                } else if (line[i] === '"' || line[i] === "'") {
+                    // Skip string literals
+                    const quote = line[i];
+                    i++;
+                    while (i < line.length && line[i] !== quote) {
+                        if (line[i] === '\\\\') i++; // skip escaped chars
+                        i++;
+                    }
+                }
+                i++;
+            }
+            
+            return depth === 0 ? i - 1 : -1;
         }
 
         /**

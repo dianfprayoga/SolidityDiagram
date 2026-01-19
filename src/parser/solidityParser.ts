@@ -10,7 +10,8 @@ import {
     StructMember,
     StateVariableInfo,
     ImportInfo,
-    SourceLocation
+    SourceLocation,
+    UsingDirective
 } from '../types';
 import { ASTTraverser } from './astTraverser';
 
@@ -102,6 +103,7 @@ export class SolidityParser {
         const structs: StructInfo[] = [];
         const enums: EnumInfo[] = [];
         const stateVariables: StateVariableInfo[] = [];
+        const usingDirectives: UsingDirective[] = [];
 
         // Extract base contracts (inheritance: is X, Y, Z)
         const baseContracts: string[] = (contractNode.baseContracts || []).map((base: any) => {
@@ -118,6 +120,8 @@ export class SolidityParser {
                 enums.push(this.processEnum(subNode, sourceCode, lines, filePath, contractNode.name));
             } else if (subNode.type === 'StateVariableDeclaration') {
                 stateVariables.push(...this.processStateVariable(subNode, lines, filePath, contractNode.name));
+            } else if (subNode.type === 'UsingForDeclaration') {
+                usingDirectives.push(this.processUsingDirective(subNode));
             }
         }
 
@@ -125,12 +129,43 @@ export class SolidityParser {
             name: contractNode.name,
             kind: contractNode.kind || 'contract',
             baseContracts,
+            usingDirectives,
             functions,
             structs,
             enums,
             stateVariables,
             location: this.extractLocation(contractNode),
             filePath
+        };
+    }
+
+    private processUsingDirective(node: any): UsingDirective {
+        // Handle different formats:
+        // using SafeERC20 for IERC20;
+        // using SafeERC20 for *;
+        // using { func1, func2 } for TypeName;
+        
+        let libraryName = '';
+        
+        // The library can be a simple name or a list of functions
+        if (node.libraryName) {
+            libraryName = node.libraryName;
+        } else if (node.functions && node.functions.length > 0) {
+            // For "using { func1, func2 } for Type", we'll take the first function's library
+            // This is a simplification - in reality we might want to track all functions
+            libraryName = node.functions[0]?.name || '';
+        }
+        
+        // The type can be a specific type or "*" for all types
+        let forType = '*';
+        if (node.typeName) {
+            forType = this.typeNameToString(node.typeName);
+        }
+        
+        return {
+            libraryName,
+            forType,
+            isGlobal: node.isGlobal || false
         };
     }
 
